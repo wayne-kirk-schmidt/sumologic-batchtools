@@ -74,7 +74,7 @@ Examples:
     7. Prepare the batchquery commands based on time delta and increment value
         prompt> ./batchdriver.ksh 1d 1H
 
-        NOTE: in the example above, the both the date and the increment use a letter/number combination
+        NOTE: Both the date and the increment must use a number and letter combination
 
         S - second
         M - minute
