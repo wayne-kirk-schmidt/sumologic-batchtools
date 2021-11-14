@@ -71,6 +71,22 @@ Examples:
     6. Increae verbosity to see the results of the query run (from 1 to 9)
         prompt> ./batchquery.py -c /var/tmp/batchtools.initial.cfg -r 1636806451000t:1636802851000t -s 6 -v 6
 
+    7. Prepare the batchquery commands based on time delta and increment value
+        prompt> ./batchdriver.ksh 1d 1H
+
+        NOTE: in the example above, the both the date and the increment use a letter/number combination
+
+        S - second
+        M - minute
+        H - hour
+        d - day
+        w - week
+        m - month
+        y - year
+
+        Thus both must be in the format {number}{letter} where letter is one of the 7 above.
+
+
 License
 =======
 
