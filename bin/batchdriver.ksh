@@ -2,6 +2,8 @@
 
 umask 022
 
+bindir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
 declare -A TIMES
 
 TIMES[S]=1
@@ -32,6 +34,6 @@ for (( time = $starttime ; time < $finaltime ; time = $time + $bucket )); do
     etime=$(( $time * 1000 ))
     ftime=$(( ( $time + $bucket ) * 1000 ))
     [[ $ftime > $finaltime ]] && ftime=$(( $finaltime * 1000 ))
-    echo "batchquery -c ${batchcfg} -r ${ftime}t:${etime}t -s 6 -v 6"
+    echo "${bindir}/batchquery.py -c ${batchcfg} -r ${ftime}t:${etime}t -s 6 -v 6"
 
 done
