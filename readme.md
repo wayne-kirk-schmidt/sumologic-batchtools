@@ -86,6 +86,11 @@ Examples:
 
         Thus both must be in the format {number}{letter} where letter is one of the 7 above.
 
+    8. Show extra documentation from the command line
+        prompt> ./batchquery.py -u subjects
+
+    9. Show extra documentation on a specific subject
+        prompt> ./batchquery.py -u examples
 
 License
 =======
