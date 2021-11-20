@@ -12,14 +12,14 @@ Style:
    http://google.github.io/styleguide/pyguide.html
 
     @name           batchquery
-    @version        1.10
+    @version        1.50
     @author-name    Wayne Schmidt
     @author-email   wschmidt@sumologic.com
     @license-name   GNU GPL
     @license-url    http://www.gnu.org/licenses/gpl.html
 """
 
-__version__ = 1.10
+__version__ = 1.50
 __author__ = "Wayne Schmidt (wschmidt@sumologic.com)"
 
 ### beginning ###
@@ -105,6 +105,20 @@ Explanation_And_Examples:
         + timerange - explain how to specify the <oldest>:<newest> timestamps
         + examples - show common examples of using the script
         + query - explain how to specify queries, either using text, STDIN, or JSON
+
+        """
+
+USAGE_EXAMPLES = """
+
+Explanation_And_Examples:
+
+	Some Examples of the tool in use are:
+        + Specify a config file, using a verbosity setting of 6 and a sleep time of 6
+          prompt> ./batchquery.py -c /var/tmp/batchtools.initial.cfg -v 6 -s 10
+        + Specify a config file, using a range of 16 hours prior to now and a sleep time of 2
+          prompt> ./batchquery.py -c /var/tmp/batchtools.initial.cfg -r 16H -s 2
+        + Specify a config file and a query file that contains all required values in JSON
+          prompt> ./batchquery.py -c /var/tmp/batchtools.initial.cfg -q /var/tmp/sample.query.json
 
         """
 
