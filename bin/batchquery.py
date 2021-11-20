@@ -40,7 +40,7 @@ sys.dont_write_bytecode = 1
 
 MY_CFG = 'undefined'
 PARSER = argparse.ArgumentParser(description="""
-run_query is a Sumo Logic cli cmdlet managing queries
+batchquery is a wrapper around the Sumo Logic API to handle en masse queries
 """)
 
 PARSER.add_argument("-a", metavar='<authkey>', dest='MY_APIKEY', \
@@ -51,8 +51,8 @@ PARSER.add_argument("-o", metavar='<orgstring>', dest='MY_ORGSTRING', \
                     help="set query target  (format: <dep>_<orgid>) ")
 PARSER.add_argument('-c', metavar='<cfgfile>', dest='MY_CONFIG', help='set config file')
 PARSER.add_argument("-q", metavar='<query>', dest='MY_QUERY', help="set query content")
-PARSER.add_argument("-r", metavar='<range>', dest='MY_RANGE', default='1h', \
-                    help="set query range")
+PARSER.add_argument("-r", metavar='<range>', dest='MY_RANGE', default='1H', \
+                    help="set query range (format: either <oldest>:<newest> or <timerange> )")
 PARSER.add_argument("-i", "--initialize", action='store_true', default=False, \
                     dest='INITIALIZE', help="initialize config file")
 PARSER.add_argument("-d", metavar='<outdir>', default="/var/tmp/batchquery", \
@@ -61,6 +61,8 @@ PARSER.add_argument("-s", metavar='<sleeptime>', default=2, dest='SLEEPTIME', \
                     help="set sleep time to check results")
 PARSER.add_argument("-v", type=int, default=0, metavar='<verbose>', \
                     dest='VERBOSE', help="increase verbosity")
+PARSER.add_argument("-u", default="none", metavar='<usagetopic>', dest='SHOWUSAGE', \
+                    help="show advanced usage ( run -u subjects )")
 
 ARGS = PARSER.parse_args()
 
@@ -71,6 +73,63 @@ _index=sumologic_volume
 
 QUERY_EXT = '.sqy'
 QUERY = DEFAULT_QUERY
+
+USAGE_TIMERANGE = """
+
+Explanation_And_Examples:
+
+	TimeRange: 
+
+	The time range needs to be in the format of either
+	+ <oldest>:<newest> - this can be relative or absolute times
+	+ <oldest> - much like above, where this assumes <newest> is now
+
+	Time Expression is: <number><letter>
+	+ S - seconds		+ d - days		+ y - years
+	+ M - minutes		+ w - weeks		+ t - special
+	+ H - hours		+ m - months
+
+	Expression Examples:
+	+ 5d:4h - please scan starting from 5 days ago to 4 hours ago ( relative)
+	+ 16H - please scan starting from 16 hours ago to now (relative)
+	+ 1637200982000t:1637291982000t - please scan from between these times ( date +%s )
+
+	NOTE: times are in milliseconds since the epoch
+        """
+
+USAGE_SUBJECTS = """
+
+Explanation_And_Examples:
+
+	Subjects:
+        + timerange - explain how to specify the <oldest>:<newest> timestamps
+        + examples - show common examples of using the script
+        + query - explain how to specify queries, either using text, STDIN, or JSON
+
+        """
+
+USAGE_QUERY = """
+
+Explanation_And_Examples:
+
+	Query:
+        + Queries can be specified using the -q flag
+	+ the query can be specified on the command line in "<query>" as well as text file
+        + if the file is a JSON file, then all of the fields in the JSON file can be used for the query
+
+        """
+
+if ARGS.SHOWUSAGE != "none":
+    PARSER.print_help()
+    if ARGS.SHOWUSAGE == "timerange":
+        print(USAGE_TIME_RANGE)
+    if ARGS.SHOWUSAGE == "subjects":
+        print(USAGE_SUBJECTS)
+    if ARGS.SHOWUSAGE == "examples":
+        print(USAGE_EXAMPLES)
+    if ARGS.SHOWUSAGE == "query":
+        print(USAGE_QUERY)
+    sys.exit()
 
 def initialize_config_file():
     """
@@ -175,6 +234,8 @@ MIN_S = 60
 HOUR_M = 60
 DAY_H = 24
 WEEK_D = 7
+DAY_M = 30
+DAY_Y = 365
 
 LIMIT = 10000
 LONGQUERY_LIMIT = 100
@@ -191,11 +252,13 @@ MY_SLEEP = int(ARGS.SLEEPTIME)
 NOW_TIME = int(time.time()) * SEC_M
 
 TIME_TABLE = dict()
-TIME_TABLE["s"] = SEC_M
-TIME_TABLE["m"] = TIME_TABLE["s"] * MIN_S
-TIME_TABLE["h"] = TIME_TABLE["m"] * HOUR_M
-TIME_TABLE["d"] = TIME_TABLE["h"] * DAY_H
+TIME_TABLE["S"] = SEC_M
+TIME_TABLE["M"] = TIME_TABLE["S"] * MIN_S
+TIME_TABLE["H"] = TIME_TABLE["M"] * HOUR_M
+TIME_TABLE["d"] = TIME_TABLE["H"] * DAY_H
 TIME_TABLE["w"] = TIME_TABLE["d"] * WEEK_D
+TIME_TABLE["m"] = TIME_TABLE["d"] * DAY_M
+TIME_TABLE["y"] = TIME_TABLE["d"] * DAY_Y
 
 TIME_PARAMS = dict()
 
@@ -293,7 +356,6 @@ def calculate_range():
     """
 
     if ARGS.MY_RANGE:
-
         if ":" in ARGS.MY_RANGE:
             start_marker, final_marker = ARGS.MY_RANGE.split(":")
             start_number = re.match(r'\d+', start_marker.replace('-', ''))
@@ -320,6 +382,25 @@ def calculate_range():
     TIME_PARAMS["time_from"] = time_from
     TIME_PARAMS["time_zone"] = 'UTC'
     TIME_PARAMS["by_receipt_time"] = False
+
+    if os.path.splitext(QUERY)[1] == 'json':
+
+        with open (QUERY, 'r') as jsonobject:
+
+            jsondata = json.load(jsonobject)
+
+            if 'from' in jsondata:
+                TIME_PARAMS["time_from"] = jsondata['from']
+
+            if 'to' in jsondata:
+                TIME_PARAMS["time_to"] = jsondata['to']
+
+            if 'timeZone' in jsondata:
+                TIME_PARAMS["time_zone"] = jsondata['timeZone']
+
+            if 'byReceiptTime' in jsondata:
+                TIME_PARAMS["by_receipt_time"] = jsondata['byReceiptTime']
+
     return TIME_PARAMS
 
 def collect_queries():
@@ -333,7 +414,7 @@ def collect_queries():
     if os.path.isfile(QUERY):
         query_list.append(QUERY)
     elif os.path.isdir(QUERY):
-        for root, _dirs, files in os.walk(MY_QUERY):
+        for root, _dirs, files in os.walk(QUERY):
             for file in files:
                 if os.path.splitext(file)[1] == QUERY_EXT:
                     fullpath = os.path.join(root, file)
@@ -345,14 +426,21 @@ def collect_queries():
 
 def collect_contents(query_item):
     """
-    Scoop up a query if a directory, file or a string
-    If a directory then it will process based on .sqy extension
+    Collect the contents of a query file
     """
     query = query_item
+
     if os.path.exists(query_item):
-        with open(query_item, "r") as file_object:
-            query = file_object.read()
-            file_object.close()
+        if os.path.splitext(QUERY)[1] == 'json':
+            with open (QUERY, 'r') as jsonobject:
+                jsondata = json.load(jsonobject)
+                if 'query' in jsondata:
+                    query = jsondata['query']
+        else:
+            with open(query_item, "r") as file_object:
+                query = file_object.read()
+                file_object.close()
+
     return query
 
 def run_sumo_query(apisession, query, time_params):

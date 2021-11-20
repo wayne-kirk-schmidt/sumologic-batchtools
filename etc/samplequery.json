@@ -1,0 +1,7 @@
+{
+    "query": "%%QUERYSTRING%%",
+    "from": "%%FROM_TIME%%",
+    "to": "%%TO_TIME%%",
+    "timeZone": "%%TIMEZONE%%",
+    "byReceiptTime": "%%RECEIPTTIMEFLAG%%"
+}
