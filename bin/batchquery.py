@@ -15,8 +15,6 @@ Style:
     @version        1.50
     @author-name    Wayne Schmidt
     @author-email   wschmidt@sumologic.com
-    @license-name   GNU GPL
-    @license-url    http://www.gnu.org/licenses/gpl.html
 """
 
 __version__ = 1.50
